@@ -602,7 +602,7 @@ index 21956a88930..8d618827368 100644
 +}
 +
 +static VkResult X11DRV_vkAcquireNextImage2KHR(VkDevice device,
-+        const VkAcquireNextImageInfoKHR *acquire_info, uint32_t *image_index)
++        const VkAcquireNextImageInfoKHR acquire_info, uint32_t *image_index)
 +{
 +    // static int once;
 +    // if (!once++) {
@@ -617,13 +617,13 @@ index 21956a88930..8d618827368 100644
 +    struct wine_vk_surface *surface = NULL;
 +    VkResult result;
 +    MESSAGE("INDEX: FENCE\n");
-+    VkFence fence = acquire_info->fence;
++    VkFence fence = acquire_info.fence;
 +    MESSAGE("INDEX: TIMEOUT\n");
-+    uint64_t timeout = acquire_info->timeout;
++    uint64_t timeout = acquire_info.timeout;
 +    MESSAGE("INDEX: SEMAPHORE\n");
-+    VkSemaphore semaphore = acquire_info->semaphore;
++    VkSemaphore semaphore = acquire_info.semaphore;
 +    MESSAGE("INDEX: SWAPCHAIN\n");
-+    VkSwapchainKHR swapchain = acquire_info->swapchain;
++    VkSwapchainKHR swapchain = acquire_info.swapchain;
 +    VkFence orig_fence;
 +    BOOL wait_fence = FALSE;
 +    HDC hdc = 0;
@@ -1198,3 +1198,89 @@ index 116c379528b..73377d899d5 100644
      if (!strcmp(name, "CreateSwapchainKHR"))
          return vulkan_funcs->p_vkCreateSwapchainKHR;
      if (!strcmp(name, "DestroySwapchainKHR"))
+diff --git a/dlls/winex11.drv/xfixes.h b/dlls/winex11.drv/xfixes.h
+new file mode 100644
+index 00000000000..3ab31201d3d
+--- /dev/null
++++ b/dlls/winex11.drv/xfixes.h
+@@ -0,0 +1,36 @@
++/*
++ * Wine X11DRV Xfixes interface
++ *
++ * Copyright 2021 Rémi Bernon for CodeWeavers
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++#ifndef __WINE_XFIXES_H
++#define __WINE_XFIXES_H
++
++#ifndef __WINE_CONFIG_H
++# error You must include config.h to use this header
++#endif
++
++#ifdef SONAME_LIBXFIXES
++#include <X11/extensions/Xfixes.h>
++#define MAKE_FUNCPTR(f) extern typeof(f) * p##f;
++MAKE_FUNCPTR(XFixesQueryExtension)
++MAKE_FUNCPTR(XFixesQueryVersion)
++MAKE_FUNCPTR(XFixesSelectSelectionInput)
++#undef MAKE_FUNCPTR
++#endif /* defined(SONAME_LIBXFIXES) */
++
++#endif /* __WINE_XFIXES_H */
+--
+diff --git a/dlls/winex11.drv/xpresent.h b/dlls/winex11.drv/xpresent.h
+new file mode 100644
+index 00000000000..6fd813a930e
+--- /dev/null
++++ b/dlls/winex11.drv/xpresent.h
+@@ -0,0 +1,36 @@
++/*
++ * Wine X11DRV Xpresent interface
++ *
++ * Copyright 2021 Rémi Bernon for CodeWeavers
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++#ifndef __WINE_XPRESENT_H
++#define __WINE_XPRESENT_H
++
++#ifndef __WINE_CONFIG_H
++# error You must include config.h to use this header
++#endif
++
++#ifdef SONAME_LIBXPRESENT
++#include <X11/extensions/Xpresent.h>
++#define MAKE_FUNCPTR(f) extern typeof(f) * p##f;
++MAKE_FUNCPTR(XPresentQueryExtension)
++MAKE_FUNCPTR(XPresentQueryVersion)
++MAKE_FUNCPTR(XPresentPixmap)
++#undef MAKE_FUNCPTR
++#endif /* defined(SONAME_LIBXPRESENT) */
++
++#endif /* __WINE_XPRESENT_H */
+--
