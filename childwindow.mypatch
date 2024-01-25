@@ -313,7 +313,7 @@ index 46e2b23e3a6..127bf54f690 100644
      return TRUE;
  }
 diff --git a/dlls/winex11.drv/vulkan.c b/dlls/winex11.drv/vulkan.c
-index 21956a88930..8d618827368 100644
+index 21956a88930..0565aca7681 100644
 --- a/dlls/winex11.drv/vulkan.c
 +++ b/dlls/winex11.drv/vulkan.c
 @@ -35,6 +35,7 @@
@@ -387,7 +387,7 @@ index 21956a88930..8d618827368 100644
      return;
  
  fail:
-@@ -231,18 +246,116 @@ static void wine_vk_surface_release(struct wine_vk_surface *surface)
+@@ -231,20 +246,118 @@ static void wine_vk_surface_release(struct wine_vk_surface *surface)
      free(surface);
  }
  
@@ -477,10 +477,11 @@ index 21956a88930..8d618827368 100644
 +        if (surface->hwnd != hwnd) continue;
 +        if (surface_with_swapchain_count > 1) wine_vk_surface_set_offscreen(surface, TRUE);
 +        else wine_vk_surface_set_offscreen(surface, known_child);
-+    }
-+    pthread_mutex_unlock(&vulkan_mutex);
-+}
-+
+     }
+-    XDeleteContext(gdi_display, (XID)hwnd, vulkan_hwnd_context);
+     pthread_mutex_unlock(&vulkan_mutex);
+ }
+ 
 +Window wine_vk_active_surface( HWND hwnd )
 +{
 +    struct wine_vk_surface *surface, *active = NULL;
@@ -502,14 +503,15 @@ index 21956a88930..8d618827368 100644
 +        if (surface_with_swapchain_count > 1) wine_vk_surface_set_offscreen(active, TRUE);
 +        else wine_vk_surface_set_offscreen(active, active->known_child);
 +        window = active->window;
-     }
--    XDeleteContext(gdi_display, (XID)hwnd, vulkan_hwnd_context);
-     pthread_mutex_unlock(&vulkan_mutex);
++    }
++    pthread_mutex_unlock(&vulkan_mutex);
 +
 +    return window;
- }
- 
++}
++
  void vulkan_thread_detach(void)
+ {
+     struct wine_vk_surface *surface, *next;
 @@ -256,10 +369,7 @@ void vulkan_thread_detach(void)
          if (surface->hwnd_thread_id != thread_id)
              continue;
@@ -522,7 +524,7 @@ index 21956a88930..8d618827368 100644
      }
      pthread_mutex_unlock(&vulkan_mutex);
  }
-@@ -291,12 +401,179 @@ static VkResult X11DRV_vkCreateInstance(const VkInstanceCreateInfo *create_info,
+@@ -291,12 +401,155 @@ static VkResult X11DRV_vkCreateInstance(const VkInstanceCreateInfo *create_info,
      return res;
  }
  
@@ -530,7 +532,6 @@ index 21956a88930..8d618827368 100644
 +        VkSwapchainKHR swapchain, uint64_t timeout, VkSemaphore semaphore,
 +        VkFence fence, uint32_t *image_index)
 +{
-+    MESSAGE("init Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +    static int once;
 +    struct x11drv_escape_present_drawable escape;
 +    struct wine_vk_surface *surface = NULL;
@@ -539,19 +540,13 @@ index 21956a88930..8d618827368 100644
 +    BOOL wait_fence = FALSE;
 +    HDC hdc = 0;
 +
-+    MESSAGE("VARIABLES Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
-+
 +    pthread_mutex_lock(&vulkan_mutex);
-+    MESSAGE("LOCK MUTEX Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +    if (!XFindContext(gdi_display, (XID)swapchain, vulkan_swapchain_context, (char **)&surface))
 +    {
-+        MESSAGE("GRAB SURFACE Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +        wine_vk_surface_grab(surface);
 +        hdc = surface->hdc;
 +    }
 +    pthread_mutex_unlock(&vulkan_mutex);
-+
-+    MESSAGE("UNLOCK MUTEX Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +
 +    if (!surface || !surface->offscreen)
 +        wait_fence = FALSE;
@@ -561,43 +556,30 @@ index 21956a88930..8d618827368 100644
 +             surface->present_mode == VK_PRESENT_MODE_FIFO_KHR)
 +        wait_fence = TRUE;
 +
-+    MESSAGE("WAIT_FENCE CHECKS Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
-+
 +    orig_fence = fence;
 +    if (wait_fence && !fence)
 +    {
-+        MESSAGE("WAITING FENCE NO FENCE Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +        VkFenceCreateInfo create_info;
 +        create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 +        create_info.pNext = NULL;
 +        create_info.flags = 0;
-+        MESSAGE("CREATING FENCE Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +        pvkCreateFence(device, &create_info, NULL, &fence);
 +    }
-+
-+    MESSAGE("ACQUIRING NEXT IMAGE KHR Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +
 +    result = pvkAcquireNextImageKHR(device, swapchain, timeout, semaphore, fence, image_index);
 +    if ((result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) && hdc && surface && surface->offscreen)
 +    {
-+        MESSAGE("VK_SUCCESS OR VK_SUBOPTIMAL. WAITING FOR FENCES IF WAIT_FENCE Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +        if (wait_fence) pvkWaitForFences(device, 1, &fence, 0, timeout);
-+        MESSAGE("FENCES RETURNED Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +        escape.code = X11DRV_PRESENT_DRAWABLE;
 +        escape.drawable = surface->window;
 +        escape.flush = TRUE;
-+        MESSAGE("DRAWABLE, NT GDI EXT ESCAPE Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +        NtGdiExtEscape(hdc, NULL, 0, X11DRV_ESCAPE, sizeof(escape), (char *)&escape, 0, NULL);
-+        MESSAGE("WAITING FENCE IF SURFACE PRESENT MODE IN MAILBOX Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +        if (wait_fence && surface->present_mode == VK_PRESENT_MODE_MAILBOX_KHR)
-+            if (once++) MESSAGE("Application requires child window rendering with mailbox present mode, expect possible tearing! Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
++            if (once++) MESSAGE("Application requires child window rendering with mailbox present mode, expect possible tearing!\n");
 +    }
 +
-+    MESSAGE("DESTROYING FENCE IF NOT EQUAL TO ORIGINAL FENCE Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +    if (fence != orig_fence) pvkDestroyFence(device, fence, NULL);
-+    MESSAGE("RELEASING SURFACE Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +    if (surface) wine_vk_surface_release(surface);
-+    MESSAGE("RETURN Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +    return result;
 +}
 +
@@ -611,36 +593,31 @@ index 21956a88930..8d618827368 100644
 +
 +    MESSAGE("Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +
-+    MESSAGE("init Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +    static int once;
 +    struct x11drv_escape_present_drawable escape;
 +    struct wine_vk_surface *surface = NULL;
 +    VkResult result;
-+    MESSAGE("INDEX: FENCE\n");
-+    VkFence fence = acquire_info.fence;
-+    MESSAGE("INDEX: TIMEOUT\n");
-+    uint64_t timeout = acquire_info.timeout;
-+    MESSAGE("INDEX: SEMAPHORE\n");
-+    VkSemaphore semaphore = acquire_info.semaphore;
-+    MESSAGE("INDEX: SWAPCHAIN\n");
 +    VkSwapchainKHR swapchain = acquire_info.swapchain;
++    VkFence fence = acquire_info.fence;
++    uint64_t timeout = acquire_info.timeout;
++    VkSemaphore semaphore = acquire_info.semaphore;
 +    VkFence orig_fence;
 +    BOOL wait_fence = FALSE;
 +    HDC hdc = 0;
 +
-+    MESSAGE("VARIABLES Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
++    MESSAGE("VARIABLES\n");
 +
 +    pthread_mutex_lock(&vulkan_mutex);
-+    MESSAGE("LOCK MUTEX Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
++    MESSAGE("LOCK MUTEX\n");
 +    if (!XFindContext(gdi_display, (XID)swapchain, vulkan_swapchain_context, (char **)&surface))
 +    {
-+        MESSAGE("GRAB SURFACE Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
++        MESSAGE("GRAB SURFACE\n");
 +        wine_vk_surface_grab(surface);
 +        hdc = surface->hdc;
 +    }
 +    pthread_mutex_unlock(&vulkan_mutex);
 +
-+    MESSAGE("UNLOCK MUTEX Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
++    MESSAGE("UNLOCK MUTEX\n");
 +
 +    if (!surface || !surface->offscreen)
 +        wait_fence = FALSE;
@@ -650,34 +627,35 @@ index 21956a88930..8d618827368 100644
 +             surface->present_mode == VK_PRESENT_MODE_FIFO_KHR)
 +        wait_fence = TRUE;
 +
-+    MESSAGE("WAIT_FENCE CHECKS Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
++    MESSAGE("WAIT_FENCE CHECKS\n");
 +
 +    orig_fence = fence;
 +    if (wait_fence && !fence)
 +    {
-+        MESSAGE("WAITING FENCE NO FENCE Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
++        MESSAGE("WAITING FENCE NO FENCE\n");
 +        VkFenceCreateInfo create_info;
 +        create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 +        create_info.pNext = NULL;
 +        create_info.flags = 0;
-+        MESSAGE("CREATING FENCE Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
++        MESSAGE("CREATING FENCE\n");
 +        pvkCreateFence(device, &create_info, NULL, &fence);
 +    }
 +
-+    MESSAGE("ACQUIRING NEXT IMAGE KHR Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
++    MESSAGE("ACQUIRING NEXT IMAGE KHR\n");
 +
 +    result = pvkAcquireNextImageKHR(device, swapchain, timeout, semaphore, fence, image_index);
++    MESSAGE("NEXT IMAGE KHR ACQUIRED.\n");
 +    if ((result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) && hdc && surface && surface->offscreen)
 +    {
-+        MESSAGE("VK_SUCCESS OR VK_SUBOPTIMAL. WAITING FOR FENCES IF WAIT_FENCE Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
++        MESSAGE("VK_SUCCESS OR VK_SUBOPTIMAL. WAITING FOR FENCES IF WAIT_FENCE\n");
 +        if (wait_fence) pvkWaitForFences(device, 1, &fence, 0, timeout);
-+        MESSAGE("FENCES RETURNED Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
++        MESSAGE("FENCES RETURNED\n");
 +        escape.code = X11DRV_PRESENT_DRAWABLE;
 +        escape.drawable = surface->window;
 +        escape.flush = TRUE;
-+        MESSAGE("DRAWABLE, NT GDI EXT ESCAPE Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
++        MESSAGE("DRAWABLE, NT GDI EXT ESCAPE\n");
 +        NtGdiExtEscape(hdc, NULL, 0, X11DRV_ESCAPE, sizeof(escape), (char *)&escape, 0, NULL);
-+        MESSAGE("WAITING FENCE IF SURFACE PRESENT MODE IN MAILBOX Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
++        MESSAGE("WAITING FENCE IF SURFACE PRESENT MODE IN MAILBOX\n");
 +        if (wait_fence && surface->present_mode == VK_PRESENT_MODE_MAILBOX_KHR)
 +            if (once++) MESSAGE("Application requires child window rendering with mailbox present mode, expect possible tearing! Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +    }
@@ -685,7 +663,7 @@ index 21956a88930..8d618827368 100644
 +    MESSAGE("DESTROYING FENCE IF NOT EQUAL TO ORIGINAL FENCE Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +    if (fence != orig_fence) pvkDestroyFence(device, fence, NULL);
 +    MESSAGE("RELEASING SURFACE Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
-+    if (surface) wine_vk_surface_release(surface);
++    if (surface) vk_surface_release(surface);
 +    MESSAGE("RETURN Emulating vkGetPhysicalDeviceSurfaceCapabilities2KHR with vkGetPhysicalDeviceSurfaceCapabilitiesKHR, pNext is ignored.\n");
 +    return result;
 +}
@@ -703,7 +681,7 @@ index 21956a88930..8d618827368 100644
      TRACE("%p %p %p %p\n", device, create_info, allocator, swapchain);
  
      if (allocator)
-@@ -308,7 +585,30 @@ static VkResult X11DRV_vkCreateSwapchainKHR(VkDevice device,
+@@ -308,7 +561,30 @@ static VkResult X11DRV_vkCreateSwapchainKHR(VkDevice device,
      create_info_host = *create_info;
      create_info_host.surface = x11_surface->host_surface;
  
@@ -735,7 +713,7 @@ index 21956a88930..8d618827368 100644
  }
  
  static VkResult X11DRV_vkCreateWin32SurfaceKHR(VkInstance instance,
-@@ -324,21 +624,17 @@ static VkResult X11DRV_vkCreateWin32SurfaceKHR(VkInstance instance,
+@@ -324,21 +600,17 @@ static VkResult X11DRV_vkCreateWin32SurfaceKHR(VkInstance instance,
      if (allocator)
          FIXME("Support for allocation callbacks not implemented yet\n");
  
@@ -760,7 +738,7 @@ index 21956a88930..8d618827368 100644
          x11_surface->window = create_client_window(create_info->hwnd, &default_visual);
          x11_surface->hwnd_thread_id = NtUserGetWindowThread(x11_surface->hwnd, NULL);
      }
-@@ -356,6 +652,19 @@ static VkResult X11DRV_vkCreateWin32SurfaceKHR(VkInstance instance,
+@@ -356,6 +628,19 @@ static VkResult X11DRV_vkCreateWin32SurfaceKHR(VkInstance instance,
          goto err;
      }
  
@@ -780,7 +758,7 @@ index 21956a88930..8d618827368 100644
      create_info_host.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
      create_info_host.pNext = NULL;
      create_info_host.flags = 0; /* reserved */
-@@ -370,11 +679,6 @@ static VkResult X11DRV_vkCreateWin32SurfaceKHR(VkInstance instance,
+@@ -370,11 +655,6 @@ static VkResult X11DRV_vkCreateWin32SurfaceKHR(VkInstance instance,
      }
  
      pthread_mutex_lock(&vulkan_mutex);
@@ -792,7 +770,7 @@ index 21956a88930..8d618827368 100644
      list_add_tail(&surface_list, &x11_surface->entry);
      pthread_mutex_unlock(&vulkan_mutex);
  
-@@ -401,7 +705,11 @@ static void X11DRV_vkDestroyInstance(VkInstance instance, const VkAllocationCall
+@@ -401,7 +681,11 @@ static void X11DRV_vkDestroyInstance(VkInstance instance, const VkAllocationCall
  static void X11DRV_vkDestroySurfaceKHR(VkInstance instance, VkSurfaceKHR surface,
          const VkAllocationCallbacks *allocator)
  {
@@ -804,7 +782,7 @@ index 21956a88930..8d618827368 100644
  
      TRACE("%p 0x%s %p\n", instance, wine_dbgstr_longlong(surface), allocator);
  
-@@ -411,21 +719,36 @@ static void X11DRV_vkDestroySurfaceKHR(VkInstance instance, VkSurfaceKHR surface
+@@ -411,21 +695,36 @@ static void X11DRV_vkDestroySurfaceKHR(VkInstance instance, VkSurfaceKHR surface
      /* vkDestroySurfaceKHR must handle VK_NULL_HANDLE (0) for surface. */
      if (x11_surface)
      {
@@ -841,7 +819,7 @@ index 21956a88930..8d618827368 100644
  }
  
  static VkResult X11DRV_vkEnumerateInstanceExtensionProperties(const char *layer_name,
-@@ -692,6 +1015,8 @@ static VkSurfaceKHR X11DRV_wine_get_host_surface( VkSurfaceKHR surface )
+@@ -692,6 +991,8 @@ static VkSurfaceKHR X11DRV_wine_get_host_surface( VkSurfaceKHR surface )
  
  static const struct vulkan_funcs vulkan_funcs =
  {
@@ -1198,89 +1176,3 @@ index 116c379528b..73377d899d5 100644
      if (!strcmp(name, "CreateSwapchainKHR"))
          return vulkan_funcs->p_vkCreateSwapchainKHR;
      if (!strcmp(name, "DestroySwapchainKHR"))
-diff --git a/dlls/winex11.drv/xfixes.h b/dlls/winex11.drv/xfixes.h
-new file mode 100644
-index 00000000000..3ab31201d3d
---- /dev/null
-+++ b/dlls/winex11.drv/xfixes.h
-@@ -0,0 +1,36 @@
-+/*
-+ * Wine X11DRV Xfixes interface
-+ *
-+ * Copyright 2021 Rémi Bernon for CodeWeavers
-+ *
-+ * This library is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU Lesser General Public
-+ * License as published by the Free Software Foundation; either
-+ * version 2.1 of the License, or (at your option) any later version.
-+ *
-+ * This library is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * Lesser General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU Lesser General Public
-+ * License along with this library; if not, write to the Free Software
-+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
-+ */
-+#ifndef __WINE_XFIXES_H
-+#define __WINE_XFIXES_H
-+
-+#ifndef __WINE_CONFIG_H
-+# error You must include config.h to use this header
-+#endif
-+
-+#ifdef SONAME_LIBXFIXES
-+#include <X11/extensions/Xfixes.h>
-+#define MAKE_FUNCPTR(f) extern typeof(f) * p##f;
-+MAKE_FUNCPTR(XFixesQueryExtension)
-+MAKE_FUNCPTR(XFixesQueryVersion)
-+MAKE_FUNCPTR(XFixesSelectSelectionInput)
-+#undef MAKE_FUNCPTR
-+#endif /* defined(SONAME_LIBXFIXES) */
-+
-+#endif /* __WINE_XFIXES_H */
---
-diff --git a/dlls/winex11.drv/xpresent.h b/dlls/winex11.drv/xpresent.h
-new file mode 100644
-index 00000000000..6fd813a930e
---- /dev/null
-+++ b/dlls/winex11.drv/xpresent.h
-@@ -0,0 +1,36 @@
-+/*
-+ * Wine X11DRV Xpresent interface
-+ *
-+ * Copyright 2021 Rémi Bernon for CodeWeavers
-+ *
-+ * This library is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU Lesser General Public
-+ * License as published by the Free Software Foundation; either
-+ * version 2.1 of the License, or (at your option) any later version.
-+ *
-+ * This library is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * Lesser General Public License for more details.
-+ *
-+ * You should have received a copy of the GNU Lesser General Public
-+ * License along with this library; if not, write to the Free Software
-+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
-+ */
-+#ifndef __WINE_XPRESENT_H
-+#define __WINE_XPRESENT_H
-+
-+#ifndef __WINE_CONFIG_H
-+# error You must include config.h to use this header
-+#endif
-+
-+#ifdef SONAME_LIBXPRESENT
-+#include <X11/extensions/Xpresent.h>
-+#define MAKE_FUNCPTR(f) extern typeof(f) * p##f;
-+MAKE_FUNCPTR(XPresentQueryExtension)
-+MAKE_FUNCPTR(XPresentQueryVersion)
-+MAKE_FUNCPTR(XPresentPixmap)
-+#undef MAKE_FUNCPTR
-+#endif /* defined(SONAME_LIBXPRESENT) */
-+
-+#endif /* __WINE_XPRESENT_H */
---
